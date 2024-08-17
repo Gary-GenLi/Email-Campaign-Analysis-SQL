@@ -41,9 +41,7 @@ To comprehensively assess email campaign performance, the following key metrics 
 
 The analysis is based on a **Snowflake Schema** data model, which is critical for organizing and managing campaign data efficiently. The schema includes:
 
-- **Email Campaign**: Contains details of campaigns, such as names, start dates, and client actions.
-- **Activity**: Logs interactions like email opens, clicks, and purchases.
-- **Transaction**: Records transaction details, including amounts and client IDs.
+![20240817144813](https://github.com/user-attachments/assets/4d46b23a-8dd1-4a7a-8a4c-96143186b916)
 
 ## 5. Lessons Learned
 
