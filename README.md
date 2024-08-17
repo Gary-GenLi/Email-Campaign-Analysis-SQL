@@ -1,2 +1,2 @@
-# SQL-Email-Campaign-Modeling
+# SQL-Email-Campaign-Analysis
 
