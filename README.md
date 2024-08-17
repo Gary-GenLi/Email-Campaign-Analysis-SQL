@@ -51,7 +51,6 @@ This analysis provided several key insights into email campaign effectiveness:
 
 - **Critical Role of Data Modeling**: Effective data modeling is essential for accurate analysis. A well-structured data model ensures that data is correctly organized and relationships are properly defined. Without proper data modeling, the analysis can produce misleading or incorrect results, impacting decision-making.
 - **Importance of Retention and Churn Rates**: These metrics are vital for understanding the long-term success of campaigns.
-- **Use of A/B Testing and Rate Lift**: These methods are valuable for evaluating campaign performance and making informed decisions.
 - **Need for Cross-Departmental Collaboration**: Defining relevant indicators and timeframes requires input from various departments to ensure comprehensive evaluation.
 
 The project underscores the importance of accurate data modeling in deriving meaningful insights and optimizing email marketing strategies.
