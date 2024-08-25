@@ -1,5 +1,5 @@
 /*
-Creates a new table X that shows top 10 campaigns starting in September 2019 that have most purchase clicks, add columns of conversion rate, unsubscribe rate, open rate and click rate for each of campaign.
+1) Creates a new table X that shows top 10 campaigns starting in September 2019 that have most purchase clicks, add columns of conversion rate, unsubscribe rate, open rate and click rate for each of campaign.
 */
 
 CREATE TABLE X
@@ -36,7 +36,7 @@ SELECT T.campaign_name, T.purchase_clicks, T.conversion_rate, T.unsubscribe_rate
 WHERE T.RN < 11
 
 /*
-The total number of clients whose first ever activity was in September 2019 but without any transactions.
+2) The total number of clients whose first ever activity was in September 2019 but without any transactions.
 */
 
 SELECT COUNT(DISTINCT T1.client_id) AS NUM
@@ -47,7 +47,7 @@ WHERE MIN(CONVERT(DATE, T1.activity_date, 101)) >= '2019-09-01' AND
 
 
 /*
-Calculates Daily Average Revenue per active client for each day in September 2019.
+3) Calculates Daily Average Revenue per active client for each day in September 2019.
 */
 
 SELECT T.transaction_date AS [DATE], AVG(CAST(T.total_amount AS decimal(19, 2))) AS [Daily Average Revenue per active client]
@@ -64,7 +64,7 @@ ORDER BY T.transaction_date
 
 
 /*
-Calculates for Day 10 and Day 30 retention rate for month of September.
+4) Calculates for Day 10 and Day 30 retention rate for month of September.
 Rentention rate is a measurement to show the percentage of customers who remain mentioned the product or campaign after a specific period
 */
 
@@ -110,7 +110,7 @@ SELECT CONCAT(CAST((CAST(RClient10 AS decimal(19, 4)) / CAST(AClient10 AS decima
 
 
 /*
-The factors may impact retention rate include: how often new campaigns created, how long the campaigns lasts and so on
+5) The factors may impact retention rate include: how often new campaigns created, how long the campaigns lasts and so on
 Chose the first one to explain
 */
 WITH NCCTE201908 AS (
@@ -173,7 +173,7 @@ the second column shows the change of retention rate between September and Augus
 
 
 /*
-Calculates churn rate for the month of September.
+6) Calculates churn rate for the month of September.
 The churn rate is the percentage of clients who stop mentioning or buying product or service over a specific period. 
 The date that client has activities and the sum of 'unsubscribe actions' are needed to find out the churn rate,
 because it's already showed in these 3 tables, so no more columns are needed.
@@ -202,7 +202,7 @@ SELECT CONCAT(CAST((CAST(CClient09 AS decimal(19, 4)) / CAST(AClient09 AS decima
 
 
 /*
-Calculate click rate % lift for Target over Control for all the campaigns in the month of September.
+7) Calculate click rate % lift for Target over Control for all the campaigns in the month of September.
 */
 
 SELECT T.campaign_name AS [Campaign name], T.TClick AS [Target Clicks], T.CClick AS [Control Clicks], 
@@ -229,7 +229,7 @@ SELECT T.campaign_name AS [Campaign name], T.TClick AS [Target Clicks], T.CClick
 
 
 /*
-The purchase rate is also an important factor to measure the revenue
+8) The purchase rate is also an important factor to measure the revenue
 The result below shows the purchase rate of September based on the all activities of the clients
 */
 
