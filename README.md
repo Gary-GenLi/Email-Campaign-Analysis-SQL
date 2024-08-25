@@ -1,4 +1,4 @@
-# SQL-Email-Campaign-Analysis
+# Email-Campaign-Analysis-SQL
 
 ## Table of Contents
 - [1. Introduction](#1-introduction)
