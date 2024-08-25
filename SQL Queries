@@ -1,0 +1,253 @@
+/*
+Creates a new table X that shows top 10 campaigns starting in September 2019 that have most purchase clicks, add columns of conversion rate, unsubscribe rate, open rate and click rate for each of campaign.
+*/
+
+CREATE TABLE X
+(
+ campaign_name VARCHAR,
+ purchase_clicks INT,
+ conversion_rate DECIMAL(19,2),
+ unsubscribe_rate DECIMAL(19,2),
+ open_rate DECIMAL(19,2),
+ click_rate DECIMAL(19,2)
+)
+GO
+
+INSERT INTO X (campaign_name, purchase_clicks, conversion_rate, unsubscribe_rate, open_rate, click_rate)
+SELECT T.campaign_name, T.purchase_clicks, T.conversion_rate, T.unsubscribe_rate, T.open_rate, T.click_rate
+  FROM(SELECT TT.campaign_name, TT.purchase_clicks, TT.conversion_rate, TT.unsubscribe_rate, TT.open_rate, TT.click_rate, 
+			  ROW_NUMBER() OVER(ORDER BY T.purchase_clicks DESC) AS RN
+	     FROM(SELECT *, 
+		             COUNT(CASE WHEN campaign_action = 'click_purchase' THEN 1 END) AS purchase_clicks, 
+			         CONCAT(CAST((CAST(COUNT(CASE WHEN campaign_action = 'click_purchase' THEN 1 END) AS decimal(19, 4)) / 
+			                CAST(COUNT(campaign_action) AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS conversion_rate,
+			         CONCAT(CAST((CAST(COUNT(CASE WHEN campaign_action = 'unsubscribe' THEN 1 END) AS decimal(19, 4)) / 
+			                CAST(COUNT(campaign_action) AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS unsubscribe_rate,
+			         CONCAT(CAST((CAST(COUNT(CASE WHEN campaign_action = 'open_email' THEN 1 END) AS decimal(19, 4)) / 
+			                CAST(COUNT(campaign_action) AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS open_rate,
+			         CONCAT(CAST((CAST(COUNT(CASE WHEN campaign_action = 'click_content' THEN 1 END) AS decimal(19, 4)) / 
+			                CAST(COUNT(campaign_action) AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS click_rate
+		        FROM Campaign 
+				WHERE YEAR(CONVERT(DATE, campaign_start_date, 101)) = 2019 AND
+				      MONTH(CONVERT(DATE, campaign_start_date, 101)) = 9
+				GROUP BY campaign_name
+		     ) AS TT
+      ) AS T
+WHERE T.RN < 11
+
+/*
+The total number of clients whose first ever activity was in September 2019 but without any transactions.
+*/
+
+SELECT COUNT(DISTINCT T1.client_id) AS NUM
+  FROM Activity T1 LEFT OUTER JOIN [Transaction] T2
+    ON CAST(T1.client_id AS INT) = T2.client_id
+WHERE MIN(CONVERT(DATE, T1.activity_date, 101)) >= '2019-09-01' AND
+      MIN(CONVERT(DATE, T1.activity_date, 101)) <= '2019-09-30' AND T2.client_id IS NULL
+
+
+/*
+Calculates Daily Average Revenue per active client for each day in September 2019.
+*/
+
+SELECT T.transaction_date AS [DATE], AVG(CAST(T.total_amount AS decimal(19, 2))) AS [Daily Average Revenue per active client]
+  FROM (SELECT client_id, transaction_date, SUM (transaction_amount) AS [total_amount]
+          FROM [Transaction]
+        WHERE CONVERT(DATE, transaction_date, 101) >= '2019-09-01' AND
+              CONVERT(DATE, transaction_date, 101) <= '2019-09-30'
+        GROUP BY client_id, transaction_date
+		ORDER BY transaction_date
+        ) AS T
+GROUP BY T.transaction_date
+ORDER BY T.transaction_date
+
+
+
+/*
+Calculates for Day 10 and Day 30 retention rate for month of September.
+Rentention rate is a measurement to show the percentage of customers who remain mentioned the product or campaign after a specific period
+*/
+
+WITH AClientCTE10 AS (
+SELECT COUNT(DISTINCT client_id) AS AClient10
+  FROM Activity 
+WHERE MONTH(CONVERT(DATE, activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, activity_date, 101)) <= 10
+),
+RClientCTE10 AS (
+SELECT COUNT(DISTINCT T1.client_id) AS RClient10
+  FROM Activity T1 JOIN Campaign T2
+    ON T1.client_id = T2.client_id
+WHERE MONTH(CONVERT(DATE, T1.activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, T1.activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, T1.activity_date, 101)) <= 10
+	  AND T2.campaign_action <> 'unsubscribe'
+),
+AClientCTE30 AS (
+SELECT COUNT(DISTINCT client_id) AS AClient30
+  FROM Activity 
+WHERE MONTH(CONVERT(DATE, activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, activity_date, 101)) <= 30
+),
+RClientCTE30 AS (
+SELECT COUNT(DISTINCT T1.client_id) AS RClient30
+  FROM Activity T1 JOIN Campaign T2
+    ON T1.client_id = T2.client_id
+WHERE MONTH(CONVERT(DATE, T1.activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, T1.activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, T1.activity_date, 101)) <= 30
+	  AND T2.campaign_action <> 'unsubscribe'
+)
+SELECT CONCAT(CAST((CAST(RClient10 AS decimal(19, 4)) / CAST(AClient10 AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS [Day 10 Retention Rate of Sep],
+       CONCAT(CAST((CAST(RClient30 AS decimal(19, 4)) / CAST(AClient30 AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS [Day 30 Retention Rate of Sep]
+  FROM AClientCTE10, RClientCTE10, AClientCTE30, RClientCTE30;
+
+
+
+
+
+
+/*
+The factors may impact retention rate include: how often new campaigns created, how long the campaigns lasts and so on
+Chose the first one to explain
+*/
+WITH NCCTE201908 AS (
+SELECT COUNT(campaign_name) AS NC201908
+  FROM Campaign
+ WHERE CONVERT(DATE, campaign_start_date, 101) >= '2019-08-01' AND
+       CONVERT(DATE, campaign_start_date, 101) <= '2019-08-30'
+),
+NCCTE201909 AS (
+SELECT COUNT(campaign_name) AS NC201909
+  FROM Campaign
+ WHERE CONVERT(DATE, campaign_start_date, 101) >= '2019-09-01' AND
+       CONVERT(DATE, campaign_start_date, 101) <= '2019-09-30'
+),
+AClientCTE201908 AS (
+SELECT COUNT(DISTINCT client_id) AS AClient201908
+  FROM Activity 
+WHERE YEAR(CONVERT(DATE, activity_date, 101)) = 2019 
+      AND MONTH(CONVERT(DATE, activity_date, 101)) = 8 
+      AND DAY(CONVERT(DATE, activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, activity_date, 101)) <= 30
+),
+RClientCTE201908 AS (
+SELECT COUNT(DISTINCT T1.client_id) AS RClient201908
+  FROM Activity T1 JOIN Campaign T2
+    ON T1.client_id = T2.client_id
+WHERE YEAR(CONVERT(DATE, activity_date, 101)) = 2019 
+      AND MONTH(CONVERT(DATE, T1.activity_date, 101)) = 8 
+      AND DAY(CONVERT(DATE, T1.activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, T1.activity_date, 101)) <= 30
+	  AND T2.campaign_action <> 'unsubscribe'
+),
+AClientCTE201909 AS (
+SELECT COUNT(DISTINCT client_id) AS AClient201909
+  FROM Activity 
+WHERE YEAR(CONVERT(DATE, activity_date, 101)) = 2019 
+      AND MONTH(CONVERT(DATE, activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, activity_date, 101)) <= 30
+),
+RClientCTE201909 AS (
+SELECT COUNT(DISTINCT T1.client_id) AS RClient201909
+  FROM Activity T1 JOIN Campaign T2
+    ON T1.client_id = T2.client_id
+WHERE YEAR(CONVERT(DATE, activity_date, 101)) = 2019 
+      AND MONTH(CONVERT(DATE, T1.activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, T1.activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, T1.activity_date, 101)) <= 30
+	  AND T2.campaign_action <> 'unsubscribe'
+)
+SELECT CONCAT(CAST((CAST(NC201909 AS decimal(19, 4)) / CAST(NC201908 AS decimal(19, 4)) - 1) * 100 AS decimal(19, 2)), '%') AS [Increment of new Campaigns of Sep],
+       CONCAT(CAST((CAST(RClient201909 AS decimal(19, 4)) / CAST(AClient201909 AS decimal(19, 4))) * 100 AS decimal(19, 2)) -
+	          CAST((CAST(RClient201908 AS decimal(19, 4)) / CAST(AClient201908 AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS [Retention Rate Change of Sep]
+  FROM NCCTE201908, NCCTE201909, AClientCTE201908, RClientCTE201908, AClientCTE201909, RClientCTE201909;
+/*
+In that result it shows how the new campaigns' number influence the retention, the first column shows the change of percentage of new campagins between September 2019 and August 2019
+the second column shows the change of retention rate between September and August 2019. The retention rate may increase when the new campagins of September is more than that of August.
+*/
+
+
+
+/*
+Calculates churn rate for the month of September.
+The churn rate is the percentage of clients who stop mentioning or buying product or service over a specific period. 
+The date that client has activities and the sum of 'unsubscribe actions' are needed to find out the churn rate,
+because it's already showed in these 3 tables, so no more columns are needed.
+*/
+
+WITH AClientCTE09 AS (
+SELECT COUNT(DISTINCT client_id) AS AClient09
+  FROM Activity 
+WHERE MONTH(CONVERT(DATE, activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, activity_date, 101)) <= 30
+),
+CClientCTE09 AS (
+SELECT COUNT(DISTINCT T1.client_id) AS CClient09
+  FROM Activity T1 JOIN Campaign T2
+    ON T1.client_id = T2.client_id
+WHERE MONTH(CONVERT(DATE, T1.activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, T1.activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, T1.activity_date, 101)) <= 30
+	  AND T2.campaign_action = 'unsubscribe'
+)
+SELECT CONCAT(CAST((CAST(CClient09 AS decimal(19, 4)) / CAST(AClient09 AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS [Churn Rate of Sep]
+  FROM AClientCTE09, CClientCTE09
+
+
+
+
+/*
+Calculate click rate % lift for Target over Control for all the campaigns in the month of September.
+*/
+
+SELECT T.campaign_name AS [Campaign name], T.TClick AS [Target Clicks], T.CClick AS [Control Clicks], 
+       CONCAT(
+	          CAST(
+			        (
+					  (
+					    CAST(T.CClick AS decimal(19, 4)) / 
+					    NULLIF(
+					             CAST(T.TClick AS decimal(19, 4)), 0
+					          )
+					  ) - 1
+					) * 100 AS decimal(19, 2)
+				  ), '%'
+			 ) AS [Click rate % lift]
+  FROM(
+        SELECT campaign_name, 
+               COUNT(DISTINCT CASE WHEN campaign_group = 'target' AND campaign_action IN ('click_content', 'click_purchase') THEN client_id END) AS TClick, 
+	           COUNT(DISTINCT CASE WHEN campaign_group = 'control' AND campaign_action IN ('click_content', 'click_purchase') THEN client_id END) AS CClick
+          FROM Campaign
+        WHERE MONTH(CONVERT(DATE, campaign_action_date, 101)) = 9
+        GROUP BY campaign_name
+	  ) AS T
+
+
+/*
+The purchase rate is also an important factor to measure the revenue
+The result below shows the purchase rate of September based on the all activities of the clients
+*/
+
+WITH AClientCTE09 AS (
+SELECT COUNT(DISTINCT client_id) AS AClient09
+  FROM Activity 
+WHERE MONTH(CONVERT(DATE, activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, activity_date, 101)) <= 30
+),
+PClientCTE09 AS (
+SELECT COUNT(DISTINCT T1.client_id) AS PClient09
+  FROM Activity T1 JOIN Campaign T2
+    ON T1.client_id = T2.client_id
+WHERE MONTH(CONVERT(DATE, T1.activity_date, 101)) = 9 
+      AND DAY(CONVERT(DATE, T1.activity_date, 101)) >= 1 
+	  AND DAY(CONVERT(DATE, T1.activity_date, 101)) <= 30
+	  AND T2.campaign_action = 'click_purchase'
+)
+SELECT CONCAT(CAST((CAST(PClient09 AS decimal(19, 4)) / CAST(AClient09 AS decimal(19, 4))) * 100 AS decimal(19, 2)), '%') AS [Purchase Rate of Sep]
+  FROM AClientCTE09, PClientCTE09;
